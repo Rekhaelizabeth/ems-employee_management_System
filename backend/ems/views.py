@@ -6,3 +6,6 @@ def home(request):
 
 def auth_page(request):
     return render(request, "auth.html")  # register/login page
+
+def profile_page(request):
+    return render(request, "profile.html")

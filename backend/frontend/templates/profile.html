@@ -1,0 +1,114 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>My Profile</title>
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+  <style>
+    .container{max-width:720px;margin:6rem auto;padding:2rem;background:#111a2b;border-radius:1.2rem}
+    .card{background:#0e1930;border:1px solid #1e2a45;padding:1rem;border-radius:1rem;margin-top:1rem}
+    .row{display:flex;gap:1rem;flex-wrap:wrap;margin-top:1rem}
+    .kv{display:grid;grid-template-columns: 180px 1fr;gap:.6rem 1rem}
+    .k{color:#a7b3cf}
+    .pill{display:inline-block;padding:.15rem .5rem;border:1px solid #33425f;border-radius:.5rem;font-size:.9rem}
+    .note{color:#a7b3cf}
+    .btn{border:0;border-radius:.7rem;padding:.8rem 1rem;cursor:pointer;font-weight:600}
+    .btn-primary{background:#4da3ff;color:#061223}
+    .btn-ghost{background:transparent;border:1px solid #263148;color:#e9eefb}
+  </style>
+
+  <!-- Axios and your API client -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="{% static 'app-axios.js' %}"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>My Profile</h1>
+
+    <div class="row">
+      <a class="btn btn-ghost" href="/">Home</a>
+      <a class="btn btn-ghost" href="/auth/#login">Switch Account</a>
+    </div>
+
+    <div id="basic" class="card">
+      <h3 style="margin-top:0">Account</h3>
+      <div class="kv">
+        <div class="k">Username</div><div id="v-username" class="v"></div>
+        <div class="k">Email</div><div id="v-email" class="v"></div>
+      </div>
+    </div>
+
+    <div id="extrasCard" class="card" style="display:none">
+      <h3 style="margin-top:0">Details</h3>
+      <div id="extras" class="kv"></div>
+    </div>
+
+    <div id="msg" class="note" style="margin-top:1rem;"></div>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", loadProfile);
+
+    async function loadProfile(){
+      const msg = document.getElementById("msg");
+      const vUser = document.getElementById("v-username");
+      const vEmail = document.getElementById("v-email");
+      const extrasWrap = document.getElementById("extras");
+      const extrasCard = document.getElementById("extrasCard");
+
+      msg.textContent = "Loading profile…";
+
+      try {
+        // Use your client helper if present, else fallback
+        let data;
+        if (window.apiClient && typeof window.apiClient.getProfile === "function") {
+          data = await window.apiClient.getProfile();
+        } else {
+          const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
+          const res = await axios.get("http://127.0.0.1:8000/api/auth/profile/", {
+            headers: { Authorization: `Bearer ${tokens.access}` }
+          });
+          data = res.data;
+        }
+
+        // basic fields
+        vUser.textContent = data.username ?? "-";
+        vEmail.textContent = data.email ?? "-";
+
+        // everything else (dynamic)
+        const entries = Object.entries(data).filter(([k]) => k !== "username" && k !== "email");
+        if (entries.length) {
+          extrasCard.style.display = "";
+          extrasWrap.innerHTML = entries.map(([k, v]) => `
+            <div class="k">${escapeHtml(prettyLabel(k))}</div>
+            <div class="v"><span class="pill">${escapeHtml(String(v ?? ""))}</span></div>
+          `).join("");
+        } else {
+          extrasCard.style.display = "none";
+        }
+
+        msg.textContent = "";
+      } catch (e) {
+        if (e?.response?.status === 401) {
+          msg.innerHTML = `Please <a class="btn btn-primary" href="/auth/#login">log in</a> to view your profile.`;
+        } else {
+          msg.textContent = e?.response?.data?.detail || e.message || "Failed to load profile.";
+        }
+      }
+    }
+
+    function prettyLabel(s){
+      // e.g., "department" -> "Department", "emp_code" -> "Emp Code"
+      return String(s).replace(/_/g, ' ')
+                      .replace(/\b\w/g, ch => ch.toUpperCase());
+    }
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;").replaceAll("<","&lt;")
+        .replaceAll(">","&gt;").replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+  </script>
+</body>
+</html>

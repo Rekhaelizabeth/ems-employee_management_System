@@ -22,6 +22,7 @@ from employees.views import EmployeeViewSet
 from accounts.views import RegisterView, ProfileView, ChangePasswordView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import home, auth_page
+from .views import profile_page
 
 router = routers.DefaultRouter()
 router.register(r"forms", FormTemplateViewSet, basename="formtemplate")
@@ -37,5 +38,6 @@ urlpatterns = [
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/profile/", ProfileView.as_view(), name="profile"),
+    path("profile/", profile_page, name="profile_page"),
     path("api/auth/change-password/", ChangePasswordView.as_view(), name="change_password"),
 ]

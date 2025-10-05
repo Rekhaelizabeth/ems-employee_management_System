@@ -1,131 +1,60 @@
+{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="utf-8" />
   <title>EMS – Register / Login</title>
-  <link rel="stylesheet" href="/static/style.css">
-  
+  <link rel="stylesheet" href="{% static 'style.css' %}">
+  <style>
+    .hidden { display:none; }
+    .row { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; }
+    .card { background:#0e1930; border:1px solid #1e2a45; padding:1rem; border-radius:1rem; margin-top:1rem; }
+    label{display:block;margin:.3rem 0;color:#a7b3cf}
+    input,select{width:100%;padding:.7rem;border-radius:.5rem;border:1px solid #23304a;background:#0c172b;color:#e9eefb}
+    .btn{border:0;border-radius:.7rem;padding:.8rem 1rem;cursor:pointer;font-weight:600}
+    .btn-primary{background:#4da3ff;color:#061223}
+    .btn-ghost{background:transparent;border:1px solid #263148;color:#e9eefb}
+    .note{color:#a7b3cf}
+    .container{max-width:720px;margin:6rem auto;padding:2rem;background:#111a2b;border-radius:1.2rem}
+    .center{justify-content:center}
+  </style>
+  <!-- Axios + your API client -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="{% static 'app-axios.js' %}"></script>
 </head>
 <body>
   <div class="container">
     <h1>Register or Login</h1>
-    <p>Use JWT (no Django form actions). Data is posted to the API.</p>
 
+    <!-- Top tab buttons -->
     <div class="row center">
       <button class="btn btn-primary" id="showRegister">Register</button>
-      <button class="btn btn-ghost" id="showLogin">Login</button>
+      <button class="btn btn-ghost"   id="showLogin">Login</button>
       <a class="btn btn-ghost" href="/">Home</a>
     </div>
 
     <!-- REGISTER -->
-    <!-- REGISTER -->
     <div id="regCard" class="card">
       <h3 style="margin-top:0">Create an account</h3>
-
       <label>Username *</label>
-      <input id="r_user" required>
-
+      <input id="r_user" placeholder="jane_doe" required>
       <label>Email *</label>
-      <input id="r_email" type="email" required>
-
+      <input id="r_email" type="email" placeholder="jane@example.com" required>
       <label>Password *</label>
-      <input id="r_pass" type="password" required>
+      <input id="r_pass" type="password" placeholder="********" required>
 
       <div class="row" style="margin-top:1rem">
         <strong>Additional fields (optional)</strong>
         <button class="btn btn-ghost" id="addField" type="button">+ Add field</button>
       </div>
-
-      <div id="extraFields"></div> <!-- dynamic rows go here -->
+      <div id="extraFields"></div>
 
       <div class="row" style="margin-top:1rem">
         <button class="btn btn-primary" id="btnRegister" type="button">Submit</button>
+        <span class="note">Already have an account? <span id="linkToLogin" class="note" style="text-decoration:underline;cursor:pointer">Login</span></span>
       </div>
       <div id="regMsg" class="note"></div>
     </div>
-
-
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="/static/app-axios.js"></script>
-    <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      const apiClient = window.apiClient;
-      console.log("apiClient:", apiClient); // Should NOT be undefined
-
-      // Get references to your DOM elements
-      const regCard = document.getElementById("regCard");
-      const logCard = document.getElementById("logCard");
-      const r_user = document.getElementById("r_user");
-      const r_email = document.getElementById("r_email");
-      const r_pass = document.getElementById("r_pass");
-      const l_user = document.getElementById("l_user");
-      const l_pass = document.getElementById("l_pass");
-      const regMsg = document.getElementById("regMsg");
-      const logMsg = document.getElementById("logMsg");
-      const extraFieldsDiv = document.getElementById("extraFields");
-
-      // Button event handlers
-      document.getElementById("btnRegister").onclick = async () => {
-        regMsg.textContent = "Submitting...";
-        try {
-          await apiClient.registerUser(
-            r_user.value.trim(),
-            r_email.value.trim(),
-            r_pass.value,
-            collectExtras()
-          );
-          regMsg.textContent = "Registered! Now login.";
-        } catch (err) {
-          regMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
-        }
-      };
-
-      document.getElementById("btnLogin").onclick = async () => {
-        logMsg.textContent = "Authenticating...";
-        try {
-          await apiClient.loginUser(l_user.value.trim(), l_pass.value);
-          logMsg.textContent = "Logged in!";
-        } catch (err) {
-          logMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
-        }
-      };
-
-      // Add field button
-      document.getElementById("addField").onclick = () => {
-        console.log("Add field clicked");
-        const row = document.createElement("div");
-        row.className = "row";
-        row.innerHTML = `
-          <input placeholder="Label" class="extra-label">
-          <select class="extra-type">
-            <option value="text">Text</option>
-            <option value="number">Number</option>
-            <option value="date">Date</option>
-          </select>
-          <input placeholder="Value" class="extra-value">
-          <button type="button" class="btn btn-ghost remove">x</button>
-        `;
-        row.querySelector(".remove").onclick = () => row.remove();
-        extraFieldsDiv.appendChild(row);
-        
-      };
-
-      // Collect extra fields
-      function collectExtras() {
-
-        console.log("inside collectExtras");
-        return [...extraFieldsDiv.children].map(row => ({
-          label: row.querySelector(".extra-label").value,
-          type: row.querySelector(".extra-type").value,
-          value: row.querySelector(".extra-value").value,
-        })).filter(f => f.label && f.value);
-      }
-
-      // ...any other DOM or apiClient code...
-    });
-</script>
-
-
 
     <!-- LOGIN -->
     <div id="logCard" class="card hidden">
@@ -135,23 +64,126 @@
       <label>Password</label>
       <input id="l_pass" type="password" placeholder="********">
       <div class="row">
-        <button class="btn btn-primary" id="btnLogin">Login</button>
-        <span class="note">Need an account? <span id="linkToRegister" class="link">Register</span></span>
+        <button class="btn btn-primary" id="btnLogin" type="button">Login</button>
+        <span class="note">Need an account? <span id="linkToRegister" class="note" style="text-decoration:underline;cursor:pointer">Register</span></span>
       </div>
       <div id="logMsg" class="note"></div>
     </div>
-
-    <div class="card note">
-      After login, tokens are saved in <code>localStorage</code>.  
-      You can go to:
-      <div class="row center">
-        <a class="btn btn-ghost" href="/templates/form_builder.html">Form Builder</a>
-        <a class="btn btn-ghost" href="/templates/employee_create.html">Create Employee</a>
-        <a class="btn btn-ghost" href="/templates/employee_list.html">List Employees</a>
-      </div>
-    </div>
   </div>
 
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const apiClient = window.apiClient;
 
+    // cards
+    const regCard = document.getElementById("regCard");
+    const logCard = document.getElementById("logCard");
+
+    // tab buttons (top)
+    const btnShowRegister = document.getElementById("showRegister");
+    const btnShowLogin    = document.getElementById("showLogin");
+
+    // small links inside cards
+    const linkToRegister  = document.getElementById("linkToRegister");
+    const linkToLogin     = document.getElementById("linkToLogin");
+
+    function setActiveTab(tab) {
+      const on = (el) => { el.classList.add("btn-primary"); el.classList.remove("btn-ghost"); el.setAttribute("aria-pressed","true"); };
+      const off = (el) => { el.classList.remove("btn-primary"); el.classList.add("btn-ghost"); el.setAttribute("aria-pressed","false"); };
+      if (tab === "login") { on(btnShowLogin); off(btnShowRegister); }
+      else { on(btnShowRegister); off(btnShowLogin); }
+    }
+    function showRegister() { regCard.classList.remove("hidden"); logCard.classList.add("hidden"); setActiveTab("register"); }
+    function showLogin()    { logCard.classList.remove("hidden"); regCard.classList.add("hidden"); setActiveTab("login"); }
+
+    // Wire the buttons/links
+    btnShowRegister?.addEventListener("click", () => { showRegister(); history.replaceState(null,"","#register"); });
+    btnShowLogin?.addEventListener("click",    () => { showLogin();    history.replaceState(null,"","#login");    });
+    linkToRegister?.addEventListener("click",  () => { showRegister(); history.replaceState(null,"","#register"); });
+    linkToLogin?.addEventListener("click",     () => { showLogin();    history.replaceState(null,"","#login");    });
+
+    // ---- Registration / Login logic ----
+    const r_user = document.getElementById("r_user");
+    const r_email = document.getElementById("r_email");
+    const r_pass = document.getElementById("r_pass");
+    const l_user = document.getElementById("l_user");
+    const l_pass = document.getElementById("l_pass");
+    const regMsg = document.getElementById("regMsg");
+    const logMsg = document.getElementById("logMsg");
+    const extraFieldsDiv = document.getElementById("extraFields");
+
+    document.getElementById("btnRegister").onclick = async () => {
+      regMsg.textContent = "Submitting...";
+      try {
+        await apiClient.registerUser(
+          r_user.value.trim(),
+          r_email.value.trim(),
+          r_pass.value,
+          collectExtras()
+        );
+        regMsg.textContent = "Registered! Now login.";
+        showLogin(); // switch to login on success
+      } catch (err) {
+        regMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
+      }
+    };
+
+    // ✅ INTEGRATED: redirect to /profile/ after successful login
+    document.getElementById("btnLogin").onclick = async () => {
+      const btn = document.getElementById("btnLogin");
+      try {
+        btn.disabled = true;
+        logMsg.textContent = "Authenticating...";
+        await apiClient.loginUser(l_user.value.trim(), l_pass.value);
+        location.href = "/profile/"; // <-- go to the profile page
+      } catch (err) {
+        logMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
+      } finally {
+        btn.disabled = false; // (won't run if redirect happens instantly)
+      }
+    };
+
+    document.getElementById("addField").onclick = () => {
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = `
+        <input placeholder="Label" class="extra-label">
+        <select class="extra-type">
+          <option value="text">Text</option>
+          <option value="number">Number</option>
+          <option value="date">Date</option>
+          <option value="email">Email</option>
+          <option value="password">Password</option>
+        </select>
+        <input placeholder="Value" class="extra-value">
+        <button type="button" class="btn btn-ghost remove">x</button>
+      `;
+      row.querySelector(".remove").onclick = () => row.remove();
+      extraFieldsDiv.appendChild(row);
+    };
+
+    function collectExtras() {
+      return [...extraFieldsDiv.children].map(row => ({
+        label: row.querySelector(".extra-label").value,
+        type:  row.querySelector(".extra-type").value,
+        value: row.querySelector(".extra-value").value,
+      })).filter(f => f.label); // keep rows with a label
+    }
+
+    function getQueryParam(name){
+      const m = new URLSearchParams(location.search).get(name);
+      return m ? m.toLowerCase() : "";
+    }
+    function openTabFromLocation() {
+      const q = getQueryParam("tab");
+      const h = (location.hash || "").toLowerCase();
+      if (q === "login" || h === "#login") showLogin();
+      else showRegister();
+    }
+    window.addEventListener("hashchange", openTabFromLocation);
+    window.addEventListener("popstate", openTabFromLocation);
+    openTabFromLocation();
+  });
+  </script>
 </body>
 </html>
