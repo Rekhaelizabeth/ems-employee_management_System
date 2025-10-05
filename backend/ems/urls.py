@@ -19,7 +19,7 @@ from django.urls import path, include
 from rest_framework import routers
 from forms_app.views import FormTemplateViewSet, FormFieldViewSet
 from employees.views import EmployeeViewSet
-from accounts.views import RegisterView, ProfileView, ChangePasswordView
+from accounts.views import RegisterView, ProfileView, ChangePasswordView, AdminUserListView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .views import home, auth_page
 from .views import profile_page
@@ -38,6 +38,7 @@ urlpatterns = [
     path("api/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/profile/", ProfileView.as_view(), name="profile"),
+    path("api/admin/users/", AdminUserListView.as_view(), name="admin_user_list"),
     path("profile/", profile_page, name="profile_page"),
     path("api/auth/change-password/", ChangePasswordView.as_view(), name="change_password"),
 ]

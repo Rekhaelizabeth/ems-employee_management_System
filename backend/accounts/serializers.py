@@ -64,3 +64,15 @@ class ChangePasswordSerializer(serializers.Serializer):
     def validate_new_password(self, value):
         validate_password(value)
         return value
+
+class AdminUserRowSerializer(serializers.ModelSerializer):
+    # return extras as a dict: {"Department": "R&D", "Role": "Manager"}
+    extras = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "is_superuser", "is_staff", "extras"]
+
+    def get_extras(self, obj):
+        # obj.extra_fields is from related_name="extra_fields" on your FK
+        return {ef.label: ef.value for ef in obj.extra_fields.all()}

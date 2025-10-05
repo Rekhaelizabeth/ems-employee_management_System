@@ -4,7 +4,7 @@ from rest_framework import generics, permissions, serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from accounts.serializers import RegisterSerializer 
-from .serializers import ProfileFlatSerializer
+from .serializers import ProfileFlatSerializer, AdminUserRowSerializer
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -37,3 +37,7 @@ class ChangePasswordView(generics.UpdateAPIView):
         user.set_password(s.validated_data["new_password"]); user.save()
         return Response({"detail": "Password changed"})
 
+class AdminUserListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAdminUser]  # only staff/superuser
+    serializer_class = AdminUserRowSerializer
+    queryset = User.objects.all().prefetch_related("extra_fields")  # optimize queries

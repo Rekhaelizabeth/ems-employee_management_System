@@ -16,6 +16,25 @@
     .btn{border:0;border-radius:.7rem;padding:.8rem 1rem;cursor:pointer;font-weight:600}
     .btn-primary{background:#4da3ff;color:#061223}
     .btn-ghost{background:transparent;border:1px solid #263148;color:#e9eefb}
+
+    /* Admin card grid */
+    .admin-grid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap:1rem;
+    }
+    .user-card{
+      background:#0c172b;
+      border:1px solid #1e2a45;
+      border-radius:1rem;
+      padding:1rem;
+    }
+    .user-card h4{ margin:.2rem 0 .6rem 0; color:#e9eefb; }
+    .kv-mini{ display:grid; grid-template-columns: 110px 1fr; gap:.4rem .8rem; }
+    .k-mini{ color:#a7b3cf; }
+    table { border:1px solid #1e2a45; }
+    th, td { border:1px solid #1e2a45; padding:.5rem; text-align:left; }
+    th { background:#0c172b; color:#a7b3cf; }
   </style>
 
   <!-- Axios and your API client -->
@@ -28,7 +47,7 @@
 
     <div class="row">
       <a class="btn btn-ghost" href="/">Home</a>
-      <a class="btn btn-ghost" href="/auth/#login">Switch Account</a>
+      <button id="btnLogout" class="btn btn-primary" type="button">Logout</button>
     </div>
 
     <div id="basic" class="card">
@@ -44,12 +63,43 @@
       <div id="extras" class="kv"></div>
     </div>
 
+    <!-- ADMIN PANEL (hidden unless admin) -->
+    <div id="adminPanel" class="card" style="display:none;">
+      <div class="row" style="margin-top:0">
+        <h3 style="margin:0">All Users</h3>
+        <div id="adminSummary" class="note" style="margin-left:auto;"></div>
+      </div>
+
+      <div class="row">
+        <input id="adminSearch" placeholder="Search by username/email/extra…" style="flex:1" />
+        <button id="adminClear" class="btn btn-ghost" type="button">Clear</button>
+      </div>
+
+      <div id="adminMsg" class="note" style="margin-top:.5rem;">Loading users…</div>
+
+      <div id="adminGrid" class="admin-grid" style="margin-top:1rem;">
+        <!-- user cards will render here -->
+      </div>
+    </div>
+
     <div id="msg" class="note" style="margin-top:1rem;"></div>
   </div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", loadProfile);
+    // ---------------- Logout ----------------
+    document.addEventListener("DOMContentLoaded", () => {
+      const btnLogout = document.getElementById("btnLogout");
+      btnLogout?.addEventListener("click", () => {
+        try {
+          if (window.apiClient?.clearTokens) window.apiClient.clearTokens();
+          else localStorage.removeItem("tokens");
+        } finally {
+          window.location.href = "/";
+        }
+      });
+    });
 
+    // --------------- Profile loader ---------------
     async function loadProfile(){
       const msg = document.getElementById("msg");
       const vUser = document.getElementById("v-username");
@@ -60,7 +110,6 @@
       msg.textContent = "Loading profile…";
 
       try {
-        // Use your client helper if present, else fallback
         let data;
         if (window.apiClient && typeof window.apiClient.getProfile === "function") {
           data = await window.apiClient.getProfile();
@@ -76,8 +125,10 @@
         vUser.textContent = data.username ?? "-";
         vEmail.textContent = data.email ?? "-";
 
-        // everything else (dynamic)
-        const entries = Object.entries(data).filter(([k]) => k !== "username" && k !== "email");
+        // dynamic extras: everything except username & email & admin flags if present
+        const entries = Object.entries(data).filter(([k]) =>
+          k !== "username" && k !== "email" && k !== "is_superuser" && k !== "is_staff"
+        );
         if (entries.length) {
           extrasCard.style.display = "";
           extrasWrap.innerHTML = entries.map(([k, v]) => `
@@ -89,6 +140,9 @@
         }
 
         msg.textContent = "";
+
+        // if admin/superuser, load admin panel
+        await maybeLoadAdminPanel(data);
       } catch (e) {
         if (e?.response?.status === 401) {
           msg.innerHTML = `Please <a class="btn btn-primary" href="/auth/#login">log in</a> to view your profile.`;
@@ -98,10 +152,93 @@
       }
     }
 
+    // --------------- Admin panel (cards) ---------------
+    async function maybeLoadAdminPanel(me) {
+      const isAdmin = (me?.username === "admin") || !!me?.is_superuser;
+      if (!isAdmin) return;
+
+      const panel  = document.getElementById("adminPanel");
+      const msg    = document.getElementById("adminMsg");
+      const grid   = document.getElementById("adminGrid");
+      const sum    = document.getElementById("adminSummary");
+      const search = document.getElementById("adminSearch");
+      const clear  = document.getElementById("adminClear");
+
+      panel.style.display = "";      // show panel
+      msg.textContent = "Loading users…";
+
+      try {
+        // Fetch all users with extras from the admin API
+        let users;
+        if (window.apiClient?.api) {
+          const res = await window.apiClient.api.get("/admin/users/");
+          users = res.data;
+        } else {
+          const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
+          const res = await axios.get("http://127.0.0.1:8000/api/admin/users/", {
+            headers: { Authorization: `Bearer ${tokens.access}` }
+          });
+          users = res.data;
+        }
+
+        // Render cards initially
+        renderAdminCards(users);
+
+        // Filter wiring
+        const doFilter = () => {
+          const q = (search.value || "").toLowerCase();
+          const filtered = users.filter(u => {
+            const base = `${u.username||""} ${u.email||""}`.toLowerCase();
+            const exts = Object.entries(u.extras || {})
+              .map(([k,v]) => `${k} ${v}`)
+              .join(" ")
+              .toLowerCase();
+            return base.includes(q) || exts.includes(q);
+          });
+          renderAdminCards(filtered);
+        };
+        search?.addEventListener("input", doFilter);
+        clear?.addEventListener("click", () => { search.value = ""; doFilter(); });
+
+        function renderAdminCards(list) {
+          sum.textContent = `${list.length} user${list.length===1?"":"s"}`;
+          if (!list.length) {
+            grid.innerHTML = "";
+            msg.textContent = "No users match the current filter.";
+            return;
+          }
+          msg.textContent = "";
+          grid.innerHTML = list.map(u => {
+            const extrasEntries = Object.entries(u.extras || {});
+            const extrasHtml = extrasEntries.length
+              ? extrasEntries.map(([k,v]) => `
+                  <div class="k-mini">${escapeHtml(prettyLabel(k))}</div>
+                  <div class="v"><span class="pill">${escapeHtml(String(v ?? ""))}</span></div>
+                `).join("")
+              : `<div class="note">No extra fields.</div>`;
+
+            return `
+              <div class="user-card">
+                <h4>${escapeHtml(u.username || "")}</h4>
+                <div class="kv-mini" style="margin-bottom:.5rem">
+                  <div class="k-mini">Email</div><div>${escapeHtml(u.email || "-")}</div>
+                </div>
+                <div class="kv-mini">
+                  ${extrasHtml}
+                </div>
+              </div>
+            `;
+          }).join("");
+        }
+
+      } catch (e) {
+        msg.textContent = e?.response?.data?.detail || e.message || "Failed to load users.";
+      }
+    }
+
+    // --------------- Helpers ---------------
     function prettyLabel(s){
-      // e.g., "department" -> "Department", "emp_code" -> "Emp Code"
-      return String(s).replace(/_/g, ' ')
-                      .replace(/\b\w/g, ch => ch.toUpperCase());
+      return String(s).replace(/_/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
     }
     function escapeHtml(s){
       return String(s)
@@ -109,6 +246,11 @@
         .replaceAll(">","&gt;").replaceAll('"',"&quot;")
         .replaceAll("'","&#039;");
     }
+
+    // Run on load
+    document.addEventListener("DOMContentLoaded", () => {
+      loadProfile();
+    });
   </script>
 </body>
 </html>
