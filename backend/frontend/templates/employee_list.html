@@ -1,0 +1,43 @@
+<!doctype html><html><body>
+<h2>Employees</h2>
+<div id="filters"></div>
+<button id="search">Search</button>
+<table border="1"><thead><tr><th>ID</th><th>Template</th><th>Values</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
+
+<script src="../static/app.js"></script>
+<script>
+let currentTemplate = null;
+async function buildFilters(){
+  const forms = await api("/forms/");
+  // pick first template to derive filter labels (simple UX)
+  currentTemplate = (forms.results||forms)[0];
+  const fdiv = document.getElementById("filters"); fdiv.innerHTML = "";
+  currentTemplate.fields.forEach(f=>{
+    const d = document.createElement("div");
+    d.innerHTML = `<label>${f.label}</label> <input data-label="${f.label}">`;
+    fdiv.appendChild(d);
+  });
+}
+async function loadEmployees(queryStr=""){
+  const data = await api(`/employees/${queryStr}`);
+  const body = document.getElementById("rows"); body.innerHTML="";
+  (data.results||data).forEach(e=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${e.id}</td><td>${e.template_name}</td>
+      <td>${e.values.map(v=>`${v.field_label}: ${v.value}`).join("<br>")}</td>
+      <td><button data-id="${e.id}" class="del">Delete</button></td>`;
+    body.appendChild(tr);
+  });
+  [...document.querySelectorAll(".del")].forEach(b=>{
+    b.onclick = async()=>{ await api(`/employees/${b.dataset.id}/`, {method:"DELETE"}); loadEmployees(); };
+  });
+}
+document.getElementById("search").onclick = ()=>{
+  const params = [...document.querySelectorAll("#filters input")].map(i=>{
+    const v = i.value.trim(); if(!v) return null;
+    return `${encodeURIComponent(i.dataset.label)}=${encodeURIComponent(v)}`;
+  }).filter(Boolean);
+  loadEmployees(params.length?`?${params.join("&")}`:"");
+};
+buildFilters().then(()=>loadEmployees());
+</script></body></html>

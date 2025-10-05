@@ -1,0 +1,28 @@
+<!doctype html><html><body>
+<h2>Register</h2>
+<input id="r_user" placeholder="username"><input id="r_email" placeholder="email">
+<input id="r_pass" type="password" placeholder="password">
+<button onclick="register()">Register</button>
+
+<h2>Login</h2>
+<input id="l_user" placeholder="username"><input id="l_pass" type="password" placeholder="password">
+<button onclick="login()">Login</button>
+
+<h2>Profile</h2>
+<button onclick="getProfile()">Load</button>
+<pre id="profile"></pre>
+<input id="p_first" placeholder="first name"><input id="p_last" placeholder="last name">
+<button onclick="saveProfile()">Save</button>
+
+<h2>Change Password</h2>
+<input id="old" type="password" placeholder="old"><input id="nw" type="password" placeholder="new">
+<button onclick="changePwd()">Change</button>
+
+<script src="../static/app.js"></script>
+<script>
+async function register(){ await api("/auth/register/",{method:"POST",body:{username:r_user.value,email:r_email.value,password:r_pass.value}}); alert("Registered"); }
+async function login(){ const r=await fetch(API+"/auth/login/",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:l_user.value,password:l_pass.value})}); const tok=await r.json(); setTokens(tok); alert("Logged in");}
+async function getProfile(){ document.getElementById('profile').textContent = JSON.stringify(await api("/auth/profile/"), null, 2); }
+async function saveProfile(){ await api("/auth/profile/",{method:"PUT",body:{first_name:p_first.value,last_name:p_last.value}}); alert("Saved"); }
+async function changePwd(){ await api("/auth/change-password/",{method:"PUT",body:{old_password:old.value,new_password:nw.value}}); alert("Changed");}
+</script></body></html>

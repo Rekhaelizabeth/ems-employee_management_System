@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>EMS – Register / Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+  
+</head>
+<body>
+  <div class="container">
+    <h1>Register or Login</h1>
+    <p>Use JWT (no Django form actions). Data is posted to the API.</p>
+
+    <div class="row center">
+      <button class="btn btn-primary" id="showRegister">Register</button>
+      <button class="btn btn-ghost" id="showLogin">Login</button>
+      <a class="btn btn-ghost" href="/">Home</a>
+    </div>
+
+    <!-- REGISTER -->
+    <!-- REGISTER -->
+    <div id="regCard" class="card">
+      <h3 style="margin-top:0">Create an account</h3>
+
+      <label>Username *</label>
+      <input id="r_user" required>
+
+      <label>Email *</label>
+      <input id="r_email" type="email" required>
+
+      <label>Password *</label>
+      <input id="r_pass" type="password" required>
+
+      <div class="row" style="margin-top:1rem">
+        <strong>Additional fields (optional)</strong>
+        <button class="btn btn-ghost" id="addField" type="button">+ Add field</button>
+      </div>
+
+      <div id="extraFields"></div> <!-- dynamic rows go here -->
+
+      <div class="row" style="margin-top:1rem">
+        <button class="btn btn-primary" id="btnRegister" type="button">Submit</button>
+      </div>
+      <div id="regMsg" class="note"></div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="/static/app-axios.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const apiClient = window.apiClient;
+      console.log("apiClient:", apiClient); // Should NOT be undefined
+
+      // Get references to your DOM elements
+      const regCard = document.getElementById("regCard");
+      const logCard = document.getElementById("logCard");
+      const r_user = document.getElementById("r_user");
+      const r_email = document.getElementById("r_email");
+      const r_pass = document.getElementById("r_pass");
+      const l_user = document.getElementById("l_user");
+      const l_pass = document.getElementById("l_pass");
+      const regMsg = document.getElementById("regMsg");
+      const logMsg = document.getElementById("logMsg");
+      const extraFieldsDiv = document.getElementById("extraFields");
+
+      // Button event handlers
+      document.getElementById("btnRegister").onclick = async () => {
+        regMsg.textContent = "Submitting...";
+        try {
+          await apiClient.registerUser(
+            r_user.value.trim(),
+            r_email.value.trim(),
+            r_pass.value,
+            collectExtras()
+          );
+          regMsg.textContent = "Registered! Now login.";
+        } catch (err) {
+          regMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
+        }
+      };
+
+      document.getElementById("btnLogin").onclick = async () => {
+        logMsg.textContent = "Authenticating...";
+        try {
+          await apiClient.loginUser(l_user.value.trim(), l_pass.value);
+          logMsg.textContent = "Logged in!";
+        } catch (err) {
+          logMsg.textContent = err?.response?.data?.detail || JSON.stringify(err?.response?.data || err.message);
+        }
+      };
+
+      // Add field button
+      document.getElementById("addField").onclick = () => {
+        console.log("Add field clicked");
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML = `
+          <input placeholder="Label" class="extra-label">
+          <select class="extra-type">
+            <option value="text">Text</option>
+            <option value="number">Number</option>
+            <option value="date">Date</option>
+          </select>
+          <input placeholder="Value" class="extra-value">
+          <button type="button" class="btn btn-ghost remove">x</button>
+        `;
+        row.querySelector(".remove").onclick = () => row.remove();
+        extraFieldsDiv.appendChild(row);
+        
+      };
+
+      // Collect extra fields
+      function collectExtras() {
+
+        console.log("inside collectExtras");
+        return [...extraFieldsDiv.children].map(row => ({
+          label: row.querySelector(".extra-label").value,
+          type: row.querySelector(".extra-type").value,
+          value: row.querySelector(".extra-value").value,
+        })).filter(f => f.label && f.value);
+      }
+
+      // ...any other DOM or apiClient code...
+    });
+</script>
+
+
+
+    <!-- LOGIN -->
+    <div id="logCard" class="card hidden">
+      <h3 style="margin-top:0">Welcome back</h3>
+      <label>Username</label>
+      <input id="l_user" placeholder="jane_doe">
+      <label>Password</label>
+      <input id="l_pass" type="password" placeholder="********">
+      <div class="row">
+        <button class="btn btn-primary" id="btnLogin">Login</button>
+        <span class="note">Need an account? <span id="linkToRegister" class="link">Register</span></span>
+      </div>
+      <div id="logMsg" class="note"></div>
+    </div>
+
+    <div class="card note">
+      After login, tokens are saved in <code>localStorage</code>.  
+      You can go to:
+      <div class="row center">
+        <a class="btn btn-ghost" href="/templates/form_builder.html">Form Builder</a>
+        <a class="btn btn-ghost" href="/templates/employee_create.html">Create Employee</a>
+        <a class="btn btn-ghost" href="/templates/employee_list.html">List Employees</a>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+</html>
