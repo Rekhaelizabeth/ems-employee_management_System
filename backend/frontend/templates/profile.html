@@ -16,6 +16,9 @@
     .btn{border:0;border-radius:.7rem;padding:.8rem 1rem;cursor:pointer;font-weight:600}
     .btn-primary{background:#4da3ff;color:#061223}
     .btn-ghost{background:transparent;border:1px solid #263148;color:#e9eefb}
+    .btn-danger{background:#d9534f;color:#fff;border-color:#b94441}
+    .btn-danger[disabled]{opacity:.7;cursor:not-allowed}
+    .btn-danger:hover{filter:brightness(1.05)}
 
     /* Admin card grid */
     .admin-grid{
@@ -32,9 +35,6 @@
     .user-card h4{ margin:.2rem 0 .6rem 0; color:#e9eefb; }
     .kv-mini{ display:grid; grid-template-columns: 110px 1fr; gap:.4rem .8rem; }
     .k-mini{ color:#a7b3cf; }
-    table { border:1px solid #1e2a45; }
-    th, td { border:1px solid #1e2a45; padding:.5rem; text-align:left; }
-    th { background:#0c172b; color:#a7b3cf; }
   </style>
 
   <!-- Axios and your API client -->
@@ -78,7 +78,7 @@
       <div id="adminMsg" class="note" style="margin-top:.5rem;">Loading users…</div>
 
       <div id="adminGrid" class="admin-grid" style="margin-top:1rem;">
-        <!-- user cards will render here -->
+        <!-- user cards render here -->
       </div>
     </div>
 
@@ -125,7 +125,7 @@
         vUser.textContent = data.username ?? "-";
         vEmail.textContent = data.email ?? "-";
 
-        // dynamic extras: everything except username & email & admin flags if present
+        // dynamic extras: everything except username/email/admin flags
         const entries = Object.entries(data).filter(([k]) =>
           k !== "username" && k !== "email" && k !== "is_superuser" && k !== "is_staff"
         );
@@ -152,7 +152,7 @@
       }
     }
 
-    // --------------- Admin panel (cards) ---------------
+    // --------------- Admin panel (cards + DELETE) ---------------
     async function maybeLoadAdminPanel(me) {
       const isAdmin = (me?.username === "admin") || !!me?.is_superuser;
       if (!isAdmin) return;
@@ -181,7 +181,7 @@
           users = res.data;
         }
 
-        // Render cards initially
+        // Initial render
         renderAdminCards(users);
 
         // Filter wiring
@@ -200,6 +200,28 @@
         search?.addEventListener("input", doFilter);
         clear?.addEventListener("click", () => { search.value = ""; doFilter(); });
 
+        // Delegate delete button clicks
+        grid.addEventListener("click", async (e) => {
+          const btn = e.target.closest(".btn-danger[data-id]");
+          if (!btn) return;
+          const id = Number(btn.dataset.id);
+          const name = btn.dataset.name || "";
+          if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+          const original = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "Deleting…";
+          try {
+            await deleteUser(id);
+            // remove from local array, then re-apply current filter
+            users = users.filter(u => u.id !== id);
+            doFilter();
+          } catch (err) {
+            msg.textContent = err?.response?.data?.detail || err.message || "Delete failed.";
+            btn.disabled = false;
+            btn.textContent = original;
+          }
+        });
+
         function renderAdminCards(list) {
           sum.textContent = `${list.length} user${list.length===1?"":"s"}`;
           if (!list.length) {
@@ -217,6 +239,9 @@
                 `).join("")
               : `<div class="note">No extra fields.</div>`;
 
+            // hide delete for yourself or superusers
+            const canDelete = (u.username !== me.username) && !u.is_superuser;
+
             return `
               <div class="user-card">
                 <h4>${escapeHtml(u.username || "")}</h4>
@@ -226,9 +251,25 @@
                 <div class="kv-mini">
                   ${extrasHtml}
                 </div>
+                <div class="row" style="margin-top:.8rem">
+                  ${canDelete
+                    ? `<button class="btn btn-danger" data-id="${u.id}" data-name="${escapeHtml(u.username)}">Delete</button>`
+                    : `<span class="note">Protected</span>`}
+                </div>
               </div>
             `;
           }).join("");
+        }
+
+        async function deleteUser(id) {
+          if (window.apiClient?.api) {
+            await window.apiClient.api.delete(`/admin/users/${id}/`);
+          } else {
+            const tokens = JSON.parse(localStorage.getItem("tokens") || "{}");
+            await axios.delete(`http://127.0.0.1:8000/api/admin/users/${id}/`, {
+              headers: { Authorization: `Bearer ${tokens.access}` }
+            });
+          }
         }
 
       } catch (e) {

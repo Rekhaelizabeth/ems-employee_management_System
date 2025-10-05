@@ -41,3 +41,17 @@ class AdminUserListView(generics.ListAPIView):
     permission_classes = [permissions.IsAdminUser]  # only staff/superuser
     serializer_class = AdminUserRowSerializer
     queryset = User.objects.all().prefetch_related("extra_fields")  # optimize queries
+
+class AdminUserDetailView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAdminUser]
+    queryset = User.objects.all()
+    lookup_field = "pk"
+
+    def delete(self, request, *args, **kwargs):
+        target = self.get_object()
+        if target.is_superuser:
+            return Response({"detail": "Cannot delete a superuser."}, status=status.HTTP_403_FORBIDDEN)
+        if target == request.user:
+            return Response({"detail": "You cannot delete your own account."}, status=status.HTTP_400_BAD_REQUEST)
+        target.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
